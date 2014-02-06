@@ -144,95 +144,92 @@
          rcode = nf90_put_var(ncid,time_id,time)
    endif
 
-         level = lst
-         ngrids = 0
- 65      if (level .gt. lfine) go to 90
-            mptr = lstart(level)
- 70         if (mptr .eq. 0) go to 80
-              ngrids  = ngrids + 1
-              nx      = node(ndihi,mptr) - node(ndilo,mptr) + 1
-              ny      = node(ndjhi,mptr) - node(ndjlo,mptr) + 1
-              loc     = node(store1, mptr)
-              locaux  = node(storeaux,mptr)
-              mitot   = nx + 2*nghost
-              mjtot   = ny + 2*nghost
-              xlow = rnode(cornxlo,mptr)
-              ylow = rnode(cornylo,mptr)
+   level = lst
+   ngrids = 0
+   do while (level .le. lfine)
+      mptr = lstart(level)
+      do while (mptr .ne. 0)
+         ngrids  = ngrids + 1
+         nx      = node(ndihi,mptr) - node(ndilo,mptr) + 1
+         ny      = node(ndjhi,mptr) - node(ndjlo,mptr) + 1
+         loc     = node(store1, mptr)
+         locaux  = node(storeaux,mptr)
+         mitot   = nx + 2*nghost
+         mjtot   = ny + 2*nghost
+         xlow = rnode(cornxlo,mptr)
+         ylow = rnode(cornylo,mptr)
 
-              if (output_format==2) then
-                  rcode=NF90_REDEF(ncid)
-                  if(rcode.ne.NF90_NOERR) print *,'NETCDF ERROR REDEFINE MODE'
-                  write(gridstr,'(I4.4)') mptr
-                  !define dimensions for grid
-                  rcode = nf90_def_dim(ncid,'dimx_'//trim(gridstr),nx,dimxid)
-                  rcode = nf90_def_dim(ncid,'dimy_'//trim(gridstr),ny,dimyid)
+         if (output_format==2) then
+            rcode=NF90_REDEF(ncid)
+            if(rcode.ne.NF90_NOERR) print *,'NETCDF ERROR REDEFINE MODE'
+            write(gridstr,'(I4.4)') mptr
+            !define dimensions for grid
+            rcode = nf90_def_dim(ncid,'dimx_'//trim(gridstr),nx,dimxid)
+            rcode = nf90_def_dim(ncid,'dimy_'//trim(gridstr),ny,dimyid)
 
-                  !define grid variable
-                  rcode = nf90_def_var(ncid,'grid_'//trim(gridstr),NF90_FLOAT, &
+            !define grid variable
+            rcode = nf90_def_var(ncid,'grid_'//trim(gridstr),NF90_FLOAT, &
                                (/num_vars_id,dimxid,dimyid/),gridid)
-                  if(rcode.ne.NF90_NOERR) print *,'NETCDF ERROR DEFINING GRID'
-                  !assign grid attributes
-                  rcode = nf90_put_att(ncid,gridid,'gridno',mptr)
-                  rcode = nf90_put_att(ncid,gridid,'level',level)
-                  dim_names="['num_vars','dimx','dimy']"
-                  rcode = nf90_put_att(ncid,gridid,'dim_names',TRIM(dim_names))
-                  rcode = nf90_put_att(ncid,gridid,'num_vars',num_vars)
-                  rcode = nf90_put_att(ncid,gridid,'dimx.m',nx)
-                  rcode = nf90_put_att(ncid,gridid,'dimy.m',ny)
-                  rcode = nf90_put_att(ncid,gridid,'dimx.lower',xlow)
-                  rcode = nf90_put_att(ncid,gridid,'dimy.lower',ylow)
-                  dx = hxposs(level)
-                  dy = hyposs(level)
-                  rcode = nf90_put_att(ncid,gridid,'dimx.d',dx)
-                  rcode = nf90_put_att(ncid,gridid,'dimy.d',dy)
-                  !grid is defined, leave define mode
-                  rcode = nf90_enddef(ncid)
-                  !create and fill grid array
-                  allocate(grid(num_vars,nx,ny))
-                  do j=nghost+1,mjtot-nghost
-                  do i=nghost+1,mitot-nghost
-                     iq_store = 0
-                     do ivar=1,nvar
-                        if (dabs(alloc(iadd(ivar,i,j))) .lt. 1d-90) then
-                           alloc(iadd(ivar,i,j)) = 0.d0
-                        endif
-                        if (output_q_components(ivar)>0) then
-                           iq_store = iq_store + 1
-                           grid(iq_store,i-nghost,j-nghost)=alloc(iadd(ivar,i,j))
-                        endif
-                     enddo
-                     iaux_store = output_q_num
-                     do iaux = 1, naux
-                        if (outaux.and.output_aux_components(iaux)>0) then
-                           iaux_store = iaux_store+1
-                           grid(iaux_store,i-nghost,j-nghost) =  alloc(iaddaux(iaux,i,j))
-                        endif
-                     enddo
+            if(rcode.ne.NF90_NOERR) print *,'NETCDF ERROR DEFINING GRID'
+            !assign grid attributes
+            rcode = nf90_put_att(ncid,gridid,'gridno',mptr)
+            rcode = nf90_put_att(ncid,gridid,'level',level)
+            dim_names="['num_vars','dimx','dimy']"
+            rcode = nf90_put_att(ncid,gridid,'dim_names',TRIM(dim_names))
+            rcode = nf90_put_att(ncid,gridid,'num_vars',num_vars)
+            rcode = nf90_put_att(ncid,gridid,'dimx.m',nx)
+            rcode = nf90_put_att(ncid,gridid,'dimy.m',ny)
+            rcode = nf90_put_att(ncid,gridid,'dimx.lower',xlow)
+            rcode = nf90_put_att(ncid,gridid,'dimy.lower',ylow)
+            dx = hxposs(level)
+            dy = hyposs(level)
+            rcode = nf90_put_att(ncid,gridid,'dimx.d',dx)
+            rcode = nf90_put_att(ncid,gridid,'dimy.d',dy)
+            !grid is defined, leave define mode
+            rcode = nf90_enddef(ncid)
+            !create and fill grid array
+            allocate(grid(num_vars,nx,ny))
+            do j=nghost+1,mjtot-nghost
+               do i=nghost+1,mitot-nghost
+                  iq_store = 0
+                  do ivar=1,nvar
+                     if (dabs(alloc(iadd(ivar,i,j))) .lt. 1d-90) then
+                        alloc(iadd(ivar,i,j)) = 0.d0
+                     endif
+                     if (output_q_components(ivar)>0) then
+                        iq_store = iq_store + 1
+                        grid(iq_store,i-nghost,j-nghost)=alloc(iadd(ivar,i,j))
+                     endif
                   enddo
+                  iaux_store = output_q_num
+                  do iaux = 1, naux
+                     if (outaux.and.output_aux_components(iaux)>0) then
+                        iaux_store = iaux_store+1
+                        grid(iaux_store,i-nghost,j-nghost) =  alloc(iaddaux(iaux,i,j))
+                     endif
                   enddo
-                  !save grid
-                  rcode = nf90_put_var(ncid,gridid,grid,(/1,1,1/),(/num_vars,nx,ny/))
-                  if(rcode.ne.NF90_NOERR) print *,'NETCDF ERROR  Writing Grid'
-                  if (allocated(grid)) deallocate(grid)
-               endif
+               enddo
+            enddo
+            !save grid
+            rcode = nf90_put_var(ncid,gridid,grid,(/1,1,1/),(/num_vars,nx,ny/))
+            if(rcode.ne.NF90_NOERR) print *,'NETCDF ERROR  Writing Grid'
+            if (allocated(grid)) deallocate(grid)
+         endif
+         mptr = node(levelptr, mptr)
+      enddo
+      level = level + 1
+   enddo
 
-            mptr = node(levelptr, mptr)
-            go to 70
- 80      level = level + 1
-         go to 65
-
- 90     continue
-
-      if (output_format==1) then
-         write(6,601) matlabu,time
-      elseif (output_format==2) then
-         !assign global attribute num_grids and variable time
-         rcode = nf90_put_var(ncid,time_id,time)
-         rcode = nf90_put_att(ncid,NF90_GLOBAL,'num_grids',ngrids)
-         rcode = nf90_close(ncid)
-         write(6,602) matlabu,time
-      endif
-      matlabu = matlabu + 1
+   if (output_format==1) then
+      write(6,601) matlabu,time
+   elseif (output_format==2) then
+      !assign global attribute num_grids and variable time
+      rcode = nf90_put_var(ncid,time_id,time)
+      rcode = nf90_put_att(ncid,NF90_GLOBAL,'num_grids',ngrids)
+      rcode = nf90_close(ncid)
+      write(6,602) matlabu,time
+   endif
+   matlabu = matlabu + 1
 
   601 format('GeoClaw: Frame ',i4,' output files done at time t = ', d12.6,/)
   602 format('GeoClaw: Frame ',i4,' output written to netcdf file at time t = ', d12.6,/)
