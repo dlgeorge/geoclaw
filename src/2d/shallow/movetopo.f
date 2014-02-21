@@ -14,7 +14,7 @@ c
       use geoclaw_module
       use topo_module
       use amr_module
-      
+
       implicit double precision (a-h,o-z)
       dimension aux(maux,1-mbc:mx+mbc,1-mbc:my+mbc)
       dimension dtopo(mxdtopo,mydtopo,mtdtopo)
@@ -40,7 +40,7 @@ c       write(26,*) 'MOVETOPO: tt, dt, t0dtopo: ',tt,dt,t0dtopo
 
 c     # change topography
 
-        write(*,*) 'MOVETOPO: setting dtopo at time = ',t
+c        write(*,*) 'MOVETOPO: setting dtopo at time = ',t
 c       write(26,*) 'MOVETOPO: setting dtopo at time = ',t
 
         if (tt.ge.tfdtopo) then

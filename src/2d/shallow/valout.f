@@ -15,7 +15,7 @@ c
 c     # set outaux = .true. to also output the aux arrays to fort.a<iframe>
 
       logical outaux
-      integer output_aux_num 
+      integer output_aux_num
       real(kind=8) :: h, hu, hv, eta
       real(kind=8), allocatable :: qeta(:)
 
@@ -34,9 +34,9 @@ c     # how many aux components requested?
       do i=1,naux
          output_aux_num = output_aux_num + output_aux_components(i)
          enddo
-        
+
 c     # Currently outputs all aux components if any are requested!
-      outaux = ((output_aux_num > 0) .and. 
+      outaux = ((output_aux_num > 0) .and.
      .         ((.not. output_aux_onlyonce) .or. (time==t0)))
 
 c     open(unit=77,file='fort.b',status='unknown',access='stream')
@@ -68,7 +68,7 @@ c        ###  make the file names and open output files
      .       form='formatted')
 
          if (output_format == 3) then
-c            # binary output          
+c            # binary output
              open(unit=matunit4,file=fname4,status='unknown',
      &               access='stream')
              endif
@@ -128,7 +128,7 @@ c                 # output in 1d format if ny=1:
                    enddo
 
                    ! Extract depth and momenta
-                   h = alloc(iadd(1,i,j)) 
+                   h = alloc(iadd(1,i,j))
                    hu = alloc(iadd(2,i,j))
                    hv = alloc(iadd(3,i,j))
 
@@ -146,7 +146,7 @@ c                 # output in 1d format if ny=1:
          endif
 
          if (output_format == 3) then
-c            # binary output          
+c            # binary output
 c            i1 = iadd(1,1,1)
 c            i2 = iadd(nvar,mitot,mjtot)
 c            # Need to augment q with eta:
@@ -214,18 +214,18 @@ c                 # output in 1d format if ny=1:
              do j = nghost+1, mjtot-nghost
                 do i = nghost+1, mitot-nghost
                    do ivar=1,naux
-                      if (abs(alloc(iaddaux(ivar,i,j))) .lt. 1d-90) 
+                      if (abs(alloc(iaddaux(ivar,i,j))) .lt. 1d-90)
      &                   alloc(iaddaux(ivar,i,j)) = 0.d0
                    enddo
-                   write(matunit3,109) (alloc(iaddaux(ivar,i,j)), 
+                   write(matunit3,109) (alloc(iaddaux(ivar,i,j)),
      &                              ivar=1,naux)
                 enddo
                 write(matunit3,*) ' '
              enddo
             endif
-            
+
          if (output_format == 3) then
-c            # binary output          
+c            # binary output
              open(unit=matunit3,file=fname3,status='unknown',
      &               access='stream')
              i1 = iaddaux(1,1,1)
@@ -251,7 +251,7 @@ c     --------------
 
       open(unit=matunit2,file=fname2,status='unknown',
      .       form='formatted')
-      if (ny.gt.1) then 
+      if (ny.gt.1) then
           ndim = 2
         else
 c         # special case where 2d AMR is used for a 1d problem

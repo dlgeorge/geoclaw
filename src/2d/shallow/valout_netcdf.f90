@@ -44,30 +44,29 @@
       real(kind=8), intent(in) :: time
 
       !locals
+      real(kind=8) :: h, hu, hv, eta
+      real(kind=8), allocatable :: qeta(:)
       real(kind=8) :: xlow,ylow,dx,dy
       real, allocatable  :: grid(:,:,:)
-      character(10)::  matname1, matname2
+      character(10):: fname1,fname2,fname3,fname4
       character(4) :: gridstr
       character(40) :: dim_names
       character(40) :: coord_units
       character(40) :: coord_sys
       logical :: outaux
-      integer :: i,j,ivar,iaux,iq_store,iaux_store
-      integer :: iadd,iaddaux
-      integer :: ipos, nstp, matunit1, matunit2,idigit
+      integer :: i,j,ivar,iaux,iq_store,iaux_store,m
+      integer :: iadd,iaddaux,iaddqeta
+      integer :: ipos, nstp, matunit1, matunit2,matunit3,matunit4,idigit
       integer :: num_vars,output_aux_num,output_q_num
       integer :: rcode,ncid
       integer :: num_vars_id,time_id,dimxid,dimyid,gridid
       integer :: level,nx,ny,loc,locaux,mitot,mjtot,mptr
 
 
- !OLD INDEXING
-     !iadd(i,j,ivar) = loc + i - 1 + mitot*((ivar-1)*mjtot+j-1)
-     !iaddaux(i,j,iaux) = locaux + i - 1 + mitot*((iaux-1)*mjtot+j-1)
- !NEW INDEXING
+   !INDEXING FUNCTIONS
       iadd(ivar,i,j)  = loc + ivar-1 + nvar*((j-1)*mitot+i-1)
       iaddaux(iaux,i,j) = locaux + iaux-1 + naux*((j-1)*mitot+i-1)
-
+      iaddqeta(ivar,i,j)  = 1 + ivar - 1 + 4*((j-1)*mitot+i-1)
    ! ::::::::::::::::::::::::::: VALOUT ::::::::::::::::::::::::::::::::::;
    !graphics output of soln values for contour or surface plots.
    !modified for GeoClaw to output the surface level along with q.
@@ -75,16 +74,22 @@
    ! :::::::::::::::::::::::::::::::::::::;:::::::::::::::::::::::::::::::;
 
    !###  make the file names and open output files
-   matname1 = 'fort.qxxxx'
-   matname2 = 'fort.txxxx'
+   fname1 = 'fort.qxxxx'
+   fname2 = 'fort.txxxx'
+   fname3 = 'fort.axxxx'
+   fname4 = 'fort.bxxxx'
    matunit1 = 50
    matunit2 = 60
+   matunit3 = 70
+   matunit4 = 71
    nstp     = matlabu
 
    do ipos = 10, 7, -1
             idigit = mod(nstp,10)
-            matname1(ipos:ipos) = char(ichar('0') + idigit)
-            matname2(ipos:ipos) = char(ichar('0') + idigit)
+            fname1(ipos:ipos) = char(ichar('0') + idigit)
+            fname2(ipos:ipos) = char(ichar('0') + idigit)
+            fname3(ipos:ipos) = char(ichar('0') + idigit)
+            fname4(ipos:ipos) = char(ichar('0') + idigit)
             nstp = nstp / 10
    enddo ! 55
 
@@ -115,7 +120,7 @@
             coord_units = 'meters'
          endif
          !prepare netcdf4 dataset (for netcdf3 change NF90_NETCDF4 to NF90_NOCLOBBER)
-         rcode = nf90_create(matname1//'.nc',NF90_NETCDF4,ncid)
+         rcode = nf90_create(fname1//'.nc',NF90_NETCDF4,ncid)
          if(rcode.ne.NF90_NOERR) print *,'NETCDF ERROR OPENING NETCDF FILE'
          !define dimension for number of output variables
          rcode = nf90_def_dim(ncid,'num_vars',num_vars,num_vars_id)
@@ -146,7 +151,7 @@
 
    level = lst
    ngrids = 0
-   do while (level .le. lfine)
+   do while (level .le. lend)
       mptr = lstart(level)
       do while (mptr .ne. 0)
          ngrids  = ngrids + 1
@@ -158,6 +163,40 @@
          mjtot   = ny + 2*nghost
          xlow = rnode(cornxlo,mptr)
          ylow = rnode(cornylo,mptr)
+
+         if (output_format==1) then
+            if (ny.gt.1) then
+               write(matunit1,1001) mptr, level, nx, ny
+               write(matunit1,1002) xlow,ylow,hxposs(level),hyposs(level)
+             else
+               !# output in 1d format if ny=1:
+               write(matunit1,1003) mptr, level, nx
+               write(matunit1,1004) xlow,hxposs(level)
+             endif
+
+             do j = nghost+1, mjtot-nghost
+                do i = nghost+1, mitot-nghost
+                   do ivar=1,nvar
+                      if (abs(alloc(iadd(ivar,i,j))) < 1d-90) then
+                         alloc(iadd(ivar,i,j)) = 0.d0
+                      endif
+                   enddo
+
+                   ! Extract depth and momenta
+                   h = alloc(iadd(1,i,j))
+                   hu = alloc(iadd(2,i,j))
+                   hv = alloc(iadd(3,i,j))
+
+                   ! Calculate surfaces
+                   eta = h + alloc(iaddaux(1,i,j))
+                   if (abs(eta) < 1d-90) then
+                      eta = 0.d0
+                   end if
+                   write(matunit1,'(4e26.16)') h,hu,hv,eta
+                enddo
+                write(matunit1,*) ' '
+             enddo
+         endif
 
          if (output_format==2) then
             rcode=NF90_REDEF(ncid)
@@ -215,6 +254,28 @@
             if(rcode.ne.NF90_NOERR) print *,'NETCDF ERROR  Writing Grid'
             if (allocated(grid)) deallocate(grid)
          endif
+         if (output_format == 3) then
+            !# binary output
+            !i1 = iadd(1,1,1)
+            !i2 = iadd(nvar,mitot,mjtot)
+            !# Need to augment q with eta:
+             allocate(qeta(4*mitot*mjtot))
+             do j=1,mjtot
+                 do i=1,mitot
+                    do m=1,3
+                        qeta(iaddqeta(m,i,j)) = alloc(iadd(m,i,j))
+                    enddo
+                    eta = alloc(iadd(1,i,j)) + alloc(iaddaux(1,i,j))
+                    qeta(iaddqeta(4,i,j)) = eta
+                 enddo
+             enddo
+
+             !# NOTE: we are writing out ghost cell data also, unlike ascii
+             write(matunit4) qeta
+
+             deallocate(qeta)
+         endif
+         !next grid
          mptr = node(levelptr, mptr)
       enddo
       level = level + 1
@@ -222,14 +283,33 @@
 
    if (output_format==1) then
       write(6,601) matlabu,time
+      close(unit=matunit1)
+      close(unit=matunit2)
    elseif (output_format==2) then
       !assign global attribute num_grids and variable time
       rcode = nf90_put_var(ncid,time_id,time)
       rcode = nf90_put_att(ncid,NF90_GLOBAL,'num_grids',ngrids)
       rcode = nf90_close(ncid)
       write(6,602) matlabu,time
+   elseif (output_format==3) then
+      close(unit=matunit4)
    endif
    matlabu = matlabu + 1
+
+  1001 format(i5,'                 grid_number',/, &
+             i5,'                 AMR_level',/,    &
+             i5,'                 mx',/,           &
+             i5,'                 my')
+  1003 format(i5,'                 grid_number',/, &
+             i5,'                 AMR_level',/,    &
+             i5,'                 mx')
+
+  1002 format(e18.8,'    xlow', /, &
+             e18.8,'    ylow', /,  &
+             e18.8,'    dx', /,    &
+             e18.8,'    dy',/)
+  1004 format(e18.8,'    xlow', /, &
+             e18.8,'    dx', /)
 
   601 format('GeoClaw: Frame ',i4,' output files done at time t = ', d12.6,/)
   602 format('GeoClaw: Frame ',i4,' output written to netcdf file at time t = ', d12.6,/)
