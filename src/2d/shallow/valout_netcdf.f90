@@ -49,12 +49,13 @@
       real(kind=8) :: xlow,ylow,dx,dy
       real, allocatable  :: grid(:,:,:)
       character(10):: fname1,fname2,fname3,fname4
+      character(11):: fname0
       character(4) :: gridstr
       character(40) :: dim_names
       character(40) :: coord_units
       character(40) :: coord_sys
       logical :: outaux
-      integer :: i,j,ivar,iaux,iq_store,iaux_store,m
+      integer :: i,j,ivar,iaux,iq_store,iaux_store,m,ndim
       integer :: iadd,iaddaux,iaddqeta
       integer :: ipos, nstp, matunit1, matunit2,matunit3,matunit4,idigit
       integer :: num_vars,output_aux_num,output_q_num
@@ -74,6 +75,7 @@
    ! :::::::::::::::::::::::::::::::::::::;:::::::::::::::::::::::::::::::;
 
    !###  make the file names and open output files
+   fname0 = 'fort.qaxxxx'
    fname1 = 'fort.qxxxx'
    fname2 = 'fort.txxxx'
    fname3 = 'fort.axxxx'
@@ -86,6 +88,7 @@
 
    do ipos = 10, 7, -1
             idigit = mod(nstp,10)
+            fname0(ipos+1:ipos+1) = char(ichar('0') + idigit)
             fname1(ipos:ipos) = char(ichar('0') + idigit)
             fname2(ipos:ipos) = char(ichar('0') + idigit)
             fname3(ipos:ipos) = char(ichar('0') + idigit)
@@ -110,6 +113,12 @@
 
    num_vars = output_aux_num + output_q_num
 
+   if (output_format==1) then
+      open(unit=matunit1,file=fname1,status='unknown',form='formatted')
+   elseif (output_format == 3) then
+      open(unit=matunit4,file=fname4,status='unknown',access='stream')
+   endif
+
          !!!!Define netcdf file and global attributes and variables
    if (output_format == 2) then
          if (coordinate_system==2) then
@@ -120,7 +129,7 @@
             coord_units = 'meters'
          endif
          !prepare netcdf4 dataset (for netcdf3 change NF90_NETCDF4 to NF90_NOCLOBBER)
-         rcode = nf90_create(fname1//'.nc',NF90_NETCDF4,ncid)
+         rcode = nf90_create(fname0//'.nc',NF90_NETCDF4,ncid)
          if(rcode.ne.NF90_NOERR) print *,'NETCDF ERROR OPENING NETCDF FILE'
          !define dimension for number of output variables
          rcode = nf90_def_dim(ncid,'num_vars',num_vars,num_vars_id)
@@ -294,7 +303,30 @@
    elseif (output_format==3) then
       close(unit=matunit4)
    endif
+
+   !fort.tXX files
+   open(unit=matunit2,file=fname2,status='unknown',form='formatted')
+   if (ny.gt.1) then
+      ndim = 2
+   else
+      !# special case where 2d AMR is used for a 1d problem
+      !# and we want to use 1d plotting routines
+      ndim = 1
+   endif
+   write(matunit2,1000) time,nvar+1,ngrids,naux,ndim,nghost
+   close(unit=matunit2)
+   !done
    matlabu = matlabu + 1
+
+
+
+   !===================================================================
+ 1000 format(e18.8,'    time', /, &
+             i5,'                 meqn'/, &
+             i5,'                 ngrids'/, &
+             i5,'                 naux'/, &
+             i5,'                 ndim'/, &
+             i5,'                 nghost'/,/)
 
   1001 format(i5,'                 grid_number',/, &
              i5,'                 AMR_level',/,    &
