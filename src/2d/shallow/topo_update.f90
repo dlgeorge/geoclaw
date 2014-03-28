@@ -115,9 +115,9 @@ subroutine topo_update(t)
                jdtopo2 = int(ceiling((yhidtopo(m)-y)/dydtopo(m))) + 1
 
                !catch small rounding errors in case point is very close to dtopo edge
-               idtopo1 = min(idtopo1,mxdtopo(m))
+               idtopo1 = max(idtopo1,1)
                idtopo2 = min(idtopo2,mxdtopo(m))
-               jdtopo1 = min(jdtopo1,mydtopo(m))
+               jdtopo1 = max(jdtopo1,1)
                jdtopo2 = min(jdtopo2,mydtopo(m))
 
                !indices for dtopo work array
