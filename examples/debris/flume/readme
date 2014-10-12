@@ -1,0 +1,17 @@
+==== GateRelease1 application =================================================
+
+
+1. Test of migration of debris-flow code to claw 5.x format
+
+2. To run code:
+
+    python makeaux.py
+    python maketopo.py
+
+    ---it is not necessary to run makedtopo.py (and it takes a long time to run)
+
+    make new     (compile for the first time...to get modules)
+    make .output (will compile and run the code).
+
+
+
