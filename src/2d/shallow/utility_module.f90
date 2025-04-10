@@ -66,7 +66,7 @@ contains
     real(kind=8), intent(out) :: values(10)
 
     integer :: pos2,nw,i,e
-    character(len=80) :: word(10), str2
+    character(len=80) :: word(12), str2
     real(kind=8) :: x
 
     ! First break into words / tokens based on white space.  
@@ -86,7 +86,7 @@ contains
         nw = nw + 1
         word(nw) = trim(adjustl(str2(1:pos2-1)))
         str2 = trim(adjustl(str2(pos2+1:)))
-        if (nw == 10) then
+        if (nw == 12) then
             write(6,*) '*** too many words on line, str = '
             write(6,*) str
             stop
